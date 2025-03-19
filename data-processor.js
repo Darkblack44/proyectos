@@ -145,6 +145,30 @@ const DataProcessor = {
         document.getElementById('top-departamentos').innerHTML = topDepartamentosHtml;
         document.getElementById('top-departamentos-fs').innerHTML = topDepartamentosHtml;
         
+        // Extraer y actualizar la sección de países extranjeros
+        const paisesExtranjeros = ['VENEZUELA', 'COREA DEL SUR'];
+        const paisesData = paisesExtranjeros
+            .map(pais => {
+                const cantidad = window.conteoMunicipios[pais] || 0;
+                return { pais, cantidad };
+            })
+            .filter(item => item.cantidad > 0)
+            .sort((a, b) => b.cantidad - a.cantidad);
+            
+        // Generar HTML para la sección de países
+        const paisesHtml = paisesData.length > 0 
+            ? paisesData.map((item, index) => `
+                <div class="clickable-item pais-item" data-tipo="municipio" data-nombre="${item.pais}">
+                    <span class="item-name"><span class="pais-flag">🌍</span> ${item.pais}</span>
+                    <span class="item-value">${item.cantidad.toLocaleString()}</span>
+                </div>
+            `).join('')
+            : '<div class="no-data">No se encontraron registros de países extranjeros</div>';
+            
+        // Actualizar el contenido de la sección de países
+        document.getElementById('lista-paises').innerHTML = paisesHtml;
+        document.getElementById('lista-paises-fs').innerHTML = paisesHtml;
+        
         // Actualizar el menú desplegable de todos los lugares
         const lugaresListHtml = municipiosArray.map((item) => `
             <div class="lugar-item" data-tipo="municipio" data-nombre="${item.municipio}">
@@ -244,6 +268,41 @@ const DataProcessor = {
                         <div class="info-content">
                             Registros: <span class="info-value">${muni.cantidad.toLocaleString()}</span><br>
                             Porcentaje: <span class="info-value">${(muni.cantidad / datos.length * 100).toFixed(1)}%</span>
+                        </div>
+                    </div>
+                `);
+                
+                window.municipioMarcadores.push(marker);
+            }
+        });
+        
+        // Crear marcadores para países extranjeros
+        paisesExtranjeros.forEach(pais => {
+            const paisInfo = municipiosArray.find(m => m.municipio === pais);
+            if (paisInfo && MapConfig.coordsMunicipios[pais]) {
+                const [lat, lng] = MapConfig.coordsMunicipios[pais];
+                
+                // Tamaño proporcional a la cantidad (mínimo más visible, pero asegurando que sean destacados)
+                const tamaño = Math.max(12, 8 + (paisInfo.cantidad / municipiosArray[0].cantidad) * 12);
+                
+                // Crear icono personalizado con un color diferente para países
+                const icon = L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color: #f1c40f; border-radius: 50%; width: ${tamaño}px; height: ${tamaño}px; border: 2px solid white;"></div>`,
+                    iconSize: [tamaño, tamaño],
+                    iconAnchor: [tamaño/2, tamaño/2]
+                });
+                
+                const marker = L.marker([lat, lng], { icon }).addTo(window.map);
+                
+                // Añadir popup al marcador con información más detallada
+                marker.bindPopup(`
+                    <div class="info-box">
+                        <div class="info-title">${paisInfo.municipio}</div>
+                        <div class="info-content">
+                            Registros: <span class="info-value">${paisInfo.cantidad.toLocaleString()}</span><br>
+                            Porcentaje: <span class="info-value">${(paisInfo.cantidad / datos.length * 100).toFixed(1)}%</span>
+                            <br><em>País extranjero</em>
                         </div>
                     </div>
                 `);
