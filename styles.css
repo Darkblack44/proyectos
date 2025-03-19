@@ -628,4 +628,61 @@ footer {
     .stats-panel {
         width: 300px;
     }
+    /* Estilos para la sección de países extranjeros */
+    .paises-list {
+        margin-top: 25px;
+        background-color: rgba(241, 196, 15, 0.05);
+        border-radius: 8px;
+        padding: 5px;
+        border: 1px solid rgba(241, 196, 15, 0.3);
+    }
+
+    .paises-list h3 {
+        color: #7d6608;
+    }
+
+    .pais-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(241, 196, 15, 0.3);
+        cursor: pointer;
+        transition: all 0.2s;
+        border-radius: 6px;
+    }
+
+    .pais-item:hover {
+        background-color: rgba(241, 196, 15, 0.15);
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .pais-item:last-child {
+        border-bottom: none;
+    }
+
+    .pais-item .item-name {
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        color: #7d6608;
+    }
+
+    .pais-item .item-value {
+        font-weight: bold;
+        color: #d4ac0d;
+    }
+
+    .pais-flag {
+        margin-right: 8px;
+        font-size: 16px;
+    }
+
+    .no-data {
+        padding: 15px;
+        text-align: center;
+        color: #95a5a6;
+        font-style: italic;
+    }
 }
