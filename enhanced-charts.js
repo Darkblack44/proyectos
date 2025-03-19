@@ -472,6 +472,20 @@
                 box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
             }
             
+            /* Estilo para etiquetas flotantes en gráficos */
+            .enhanced-floating-label {
+                position: absolute;
+                padding: 4px 8px;
+                background-color: rgba(0, 0, 0, 0.7);
+                color: white;
+                border-radius: 4px;
+                font-size: 11px;
+                font-weight: bold;
+                pointer-events: none;
+                z-index: 1000;
+                white-space: nowrap;
+            }
+            
             /* Mejoras responsivas adicionales */
             @media (max-width: 1200px) {
                 .enhanced-chart-row {
@@ -643,7 +657,7 @@
                             </select>
                         </div>
                         
-                        <button class="enhanced-show-all-btn">
+                        <button class="enhanced-show-all-btn" id="show-all-values-btn">
                             <svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2zm5-4h11v2H9v-2zm-5-4h16v2H4v-2zm5-4h11v2H9V7zm-5-4h16v2H4V3z"/></svg>
                             Mostrar Valores
                         </button>
@@ -728,11 +742,119 @@
         showAllBtn.addEventListener('click', function() {
             showAllDataLabels = !showAllDataLabels;
             this.classList.toggle('active', showAllDataLabels);
-            this.innerHTML = showAllDataLabels ? 
-                `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg> Ocultar Valores` : 
-                `<svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2zm5-4h11v2H9v-2zm-5-4h16v2H4v-2zm5-4h11v2H9V7zm-5-4h16v2H4V3z"/></svg> Mostrar Valores`;
+            
+            // Actualizar texto e icono del botón
+            if (showAllDataLabels) {
+                this.innerHTML = `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg> Ocultar Valores`;
+                this.setAttribute('title', 'Ocultar valores en las gráficas');
+            } else {
+                this.innerHTML = `<svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2zm5-4h11v2H9v-2zm-5-4h16v2H4v-2zm5-4h11v2H9V7zm-5-4h16v2H4V3z"/></svg> Mostrar Valores`;
+                this.setAttribute('title', 'Mostrar valores en las gráficas');
+            }
+            
+            // Actualizar todos los botones con la misma clase
+            document.querySelectorAll('.enhanced-show-all-btn').forEach(btn => {
+                if (btn !== this) {
+                    btn.classList.toggle('active', showAllDataLabels);
+                    btn.innerHTML = showAllDataLabels ? 
+                        `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg> Ocultar Valores` : 
+                        `<svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2zm5-4h11v2H9v-2zm-5-4h16v2H4v-2zm5-4h11v2H9V7zm-5-4h16v2H4V3z"/></svg> Mostrar Valores`;
+                }
+            });
+            
+            // Regenerar los gráficos para aplicar cambios
             updateCharts();
+            
+            // Mostrar etiquetas manualmente si es necesario como fallback
+            if (showAllDataLabels) {
+                setTimeout(function() {
+                    showAllLabelsManually();
+                }, 300);
+            } else {
+                // Eliminar etiquetas manuales
+                document.querySelectorAll('.enhanced-floating-label').forEach(label => {
+                    label.remove();
+                });
+            }
         });
+        
+        // Función para mostrar etiquetas manualmente como fallback
+        function showAllLabelsManually() {
+            // Primero eliminar cualquier etiqueta existente
+            document.querySelectorAll('.enhanced-floating-label').forEach(label => {
+                label.remove();
+            });
+            
+            if (!showAllDataLabels) return;
+            
+            // Recorrer todas las instancias de gráficos
+            Object.entries(chartInstances).forEach(([key, chart]) => {
+                if (!chart || !chart.data || !chart.data.datasets) return;
+                
+                // Obtener el contenedor del gráfico
+                const canvas = chart.canvas;
+                if (!canvas) return;
+                
+                const chartContainer = canvas.parentElement;
+                if (!chartContainer) return;
+                
+                // Para cada conjunto de datos
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                    if (!dataset.data) return;
+                    
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    if (!meta || meta.hidden) return;
+                    
+                    // Para cada punto de datos
+                    meta.data.forEach((element, index) => {
+                        // Usar return en lugar de continue
+                        if (!element || !element.getCenterPoint) return;
+                        
+                        try {
+                            // Obtener posición del elemento
+                            const position = element.getCenterPoint();
+                            if (!position) return;
+                            
+                            // Obtener valor y formatear
+                            const value = dataset.data[index];
+                            if (value === undefined || value === null) return;
+                            
+                            let label = '';
+                            
+                            // Formatear según tipo de gráfico
+                            if (chart.config.type === 'pie' || chart.config.type === 'doughnut') {
+                                const chartLabel = chart.data.labels[index];
+                                const total = dataset.data.reduce((sum, val) => sum + (typeof val === 'number' ? val : 0), 0);
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                                
+                                if (percentage > 3) {
+                                    const formattedValue = typeof value === 'number' ? value.toLocaleString() : value;
+                                    label = `${chartLabel}: ${formattedValue} (${percentage}%)`;
+                                } else {
+                                    label = `${percentage}%`;
+                                }
+                            } else {
+                                label = typeof value === 'number' ? value.toLocaleString() : value;
+                            }
+                            
+                            // Crear etiqueta flotante
+                            const labelElement = document.createElement('div');
+                            labelElement.className = 'enhanced-floating-label';
+                            labelElement.textContent = label;
+                            
+                            // Posicionar la etiqueta
+                            labelElement.style.left = (position.x + canvas.offsetLeft) + 'px';
+                            labelElement.style.top = (position.y + canvas.offsetTop - 20) + 'px';
+                            
+                            // Agregar al contenedor
+                            chartContainer.appendChild(labelElement);
+                        } catch (error) {
+                            console.warn('Error al mostrar etiqueta manual:', error);
+                        }
+                    });
+                });
+            });
+        }
         
         // Evento para tecla ESC
         document.addEventListener('keydown', function(e) {
@@ -949,6 +1071,15 @@
         contentDiv.innerHTML = '';
         Object.values(chartInstances).forEach(chart => chart.destroy());
         chartInstances = {};
+        
+        // Actualizar estado del botón de mostrar valores
+        const showAllBtn = chartsContainer.querySelector('#show-all-values-btn');
+        if (showAllBtn) {
+            showAllBtn.classList.toggle('active', showAllDataLabels);
+            showAllBtn.innerHTML = showAllDataLabels ? 
+                `<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg> Ocultar Valores` : 
+                `<svg viewBox="0 0 24 24"><path d="M4 19h16v2H4v-2zm5-4h11v2H9v-2zm-5-4h16v2H4v-2zm5-4h11v2H9V7zm-5-4h16v2H4V3z"/></svg> Mostrar Valores`;
+        }
         
         // Preparar datos según la pestaña activa
         let processedData;
@@ -1247,14 +1378,70 @@
                 color: '#fff',
                 backgroundColor: 'rgba(0, 0, 0, 0.7)',
                 borderRadius: 4,
-                padding: 4,
+                padding: 6,
                 font: {
                     weight: 'bold',
                     size: 11
                 },
                 formatter: function(value, context) {
-                    return value.toLocaleString();
-                }
+                    // Adaptar el formato según el tipo de gráfico
+                    if (context.chart.config.type === 'pie' || context.chart.config.type === 'doughnut') {
+                        const label = context.chart.data.labels[context.dataIndex];
+                        const shortLabel = label.length > 10 ? label.substring(0, 10) + '...' : label;
+                        const dataValue = context.chart.data.datasets[0].data[context.dataIndex];
+                        
+                        // Mostrar porcentaje para gráficos circulares
+                        if (typeof dataValue === 'number') {
+                            if (dataValue < 1) {
+                                return `${shortLabel}: ${dataValue.toFixed(1)}%`;
+                            } else {
+                                // Si es una cantidad, verificar si es porcentaje o valor absoluto
+                                const total = context.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percentage = (dataValue / total * 100).toFixed(1);
+                                
+                                if (dataValue > 1000) {
+                                    return `${shortLabel}: ${Math.round(dataValue).toLocaleString()} (${percentage}%)`;
+                                } else {
+                                    return `${shortLabel}: ${dataValue} (${percentage}%)`;
+                                }
+                            }
+                        }
+                        return `${shortLabel}: ${dataValue}`;
+                    } else {
+                        // Para gráficos de barras y otros, mostrar solo el valor
+                        if (typeof value === 'number') {
+                            if (value > 1000) {
+                                return value.toLocaleString();
+                            } else {
+                                return value;
+                            }
+                        }
+                        return value;
+                    }
+                },
+                anchor: function(context) {
+                    // Cambiar el anclaje dependiendo del tipo de gráfico
+                    if (context.chart.config.type === 'pie' || context.chart.config.type === 'doughnut') {
+                        return 'end';
+                    } else if (context.chart.config.type === 'bar') {
+                        return 'end';
+                    } else if (context.chart.config.type === 'line') {
+                        return 'center';
+                    }
+                    return 'center';
+                },
+                align: function(context) {
+                    // Alinear según el tipo de gráfico
+                    if (context.chart.config.type === 'pie' || context.chart.config.type === 'doughnut') {
+                        return 'end';
+                    } else if (context.chart.config.type === 'bar') {
+                        return 'start';
+                    }
+                    return 'center';
+                },
+                offset: 8,
+                // Evitar superposición de etiquetas
+                overlap: false
             }
         };
         
@@ -1288,6 +1475,40 @@
                     },
                     legend: {
                         display: false
+                    },
+                    // Configuración específica para etiquetas en barras
+                    datalabels: {
+                        ...commonPlugins.datalabels,
+                        formatter: function(value, context) {
+                            // Mostrar cantidad y porcentaje para barras
+                            const percentage = (value / data.total * 100).toFixed(1);
+                            if (value > 1000) {
+                                return `${Math.round(value).toLocaleString()} (${percentage}%)`;
+                            }
+                            return `${value} (${percentage}%)`;
+                        },
+                        // Posicionar las etiquetas dentro de las barras para barras grandes
+                        // y fuera para barras pequeñas
+                        anchor: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value > data.stats.promedio ? 'center' : 'end';
+                        },
+                        align: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value > data.stats.promedio ? 'center' : 'start';
+                        },
+                        color: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value > data.stats.promedio ? '#fff' : '#000';
+                        },
+                        backgroundColor: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value > data.stats.promedio ? 'rgba(0, 0, 0, 0.7)' : 'rgba(255, 255, 255, 0.7)';
+                        },
+                        offset: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value > data.stats.promedio ? 0 : 8;
+                        }
                     }
                 },
                 scales: {
@@ -1355,6 +1576,53 @@
                             font: {
                                 size: 11
                             }
+                        }
+                    },
+                    // Configuración específica para etiquetas en gráfico de torta
+                    datalabels: {
+                        ...commonPlugins.datalabels,
+                        formatter: function(value, context) {
+                            // Para sectores grandes, mostrar el nombre y porcentaje
+                            // Para sectores pequeños, solo mostrar porcentaje
+                            const label = context.chart.data.labels[context.dataIndex];
+                            const shortLabel = label.length > 10 ? label.substring(0, 10) + '...' : label;
+                            const cantidad = data.departamentos[context.dataIndex].cantidad;
+                            
+                            if (value >= 5) { // Sectores con más del 5%
+                                return `${shortLabel}: ${cantidad.toLocaleString()} (${value.toFixed(1)}%)`;
+                            } else if (value >= 1) { // Sectores entre 1% y 5%
+                                return `${shortLabel}: ${value.toFixed(1)}%`;
+                            }
+                            return `${value.toFixed(1)}%`; // Sectores muy pequeños
+                        },
+                        // Ajustar posición según el tamaño del sector
+                        anchor: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value < 3 ? 'end' : 'center'; // Si es menor al 3%, colocar fuera
+                        },
+                        align: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value < 3 ? 'end' : 'center'; // Si es menor al 3%, alinear afuera
+                        },
+                        offset: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return value < 3 ? 20 : 0; // Si es menor al 3%, dar offset
+                        },
+                        // Líneas de conexión para etiquetas externas
+                        textAlign: 'center',
+                        display: function(context) {
+                            // Solo mostrar etiquetas cuando el botón está activado
+                            // Y para sectores relevantes (por encima del 0.5%)
+                            return showAllDataLabels && context.dataset.data[context.dataIndex] > 0.5;
+                        },
+                        clamp: true, // Evitar que etiquetas salgan del canvas
+                        // Texto más pequeño para sectores pequeños
+                        font: function(context) {
+                            const value = context.dataset.data[context.dataIndex];
+                            return {
+                                weight: 'bold',
+                                size: value < 3 ? 9 : 11
+                            };
                         }
                     }
                 }
