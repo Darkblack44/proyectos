@@ -165,7 +165,10 @@ const MapConfig = {
         'MONTERIA': [8.75, -75.88],
         'FLORENCIA': [1.61, -75.60],
         'EL COLEGIO': [4.58, -74.44],
-        'APARTADO': [7.88, -76.63]
+        'APARTADO': [7.88, -76.63],
+        // Añadir coordenadas para los países extranjeros
+        'VENEZUELA': [8.00, -66.00],
+        'COREA DEL SUR': [36.00, 128.00]
     },
     
     // Función para obtener color según valor normalizado
